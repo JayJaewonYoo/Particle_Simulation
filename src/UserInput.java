@@ -6,8 +6,11 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.awt.geom.AffineTransform;
 import java.awt.geom.Ellipse2D;
+import java.awt.geom.Path2D;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Random;
 
@@ -16,10 +19,11 @@ import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
+import javax.swing.Timer;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
-public class UserInput extends JPanel implements KeyListener, ActionListener, DocumentListener{
+public class UserInput extends JPanel implements KeyListener, ActionListener, DocumentListener {
 	private static final long serialVersionUID = -3239823441327400365L;
 	
 	public static double speed = 1;
@@ -45,9 +49,9 @@ public class UserInput extends JPanel implements KeyListener, ActionListener, Do
 					if(difference != GUI.numParticles) {
 						if(difference > GUI.numParticles) {
 							// Adding particles:
-							if(difference > 2000) {
-								difference = 2000;
-								numParticlesSelected.setText("2000");
+							if(difference > 1000) {
+								difference = 1000;
+								numParticlesSelected.setText("1000");
 							}
 							GUI.initialize(GUI.numParticles, difference);
 							GUI.numParticles = difference;
@@ -57,11 +61,14 @@ public class UserInput extends JPanel implements KeyListener, ActionListener, Do
 							if(difference < 0) {
 								difference = 0;
 								numParticlesSelected.setText("0");
+								GUI.particleList = new ArrayList<particle>();
 							}
-							difference = GUI.numParticles - difference;
-							GUI.numParticles -= difference;
-							for(int i = 0; i < difference; i++) {
-								GUI.particleList.remove(0);
+							else {
+								difference = GUI.numParticles - difference;
+								GUI.numParticles -= difference;
+								for(int i = 0; i < difference; i++) {
+									GUI.particleList.remove(0);
+								}
 							}
 						}
 					}
@@ -69,6 +76,26 @@ public class UserInput extends JPanel implements KeyListener, ActionListener, Do
 				else {
 					numParticlesSelected.setText(Integer.toString(GUI.numParticles));
 				}
+			}
+		});
+		
+		JLabel particleSizeLabel = new JLabel("Size of Particles: ");
+		JTextField particleSizeSelected = new JTextField(4);
+		particleSizeLabel.setLabelFor(particleSizeSelected);
+		particleSizeSelected.setText("11");
+		particleSizeSelected.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				GUI.particleSize = (byte) Integer.parseInt(particleSizeSelected.getText());
+			}
+		});
+		
+		JLabel energyLabel = new JLabel("Energy Loss (%): ");
+		JTextField energySelected = new JTextField(4);
+		energyLabel.setLabelFor(energySelected);
+		energySelected.setText("30");
+		energySelected.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				GUI.energyLoss = 1 - (Double.parseDouble(energySelected.getText())/100);
 			}
 		});
 		
@@ -241,6 +268,49 @@ public class UserInput extends JPanel implements KeyListener, ActionListener, Do
 			}
 		});
 		
+		JButton resetButton = new JButton("Reset");
+		resetButton.setPreferredSize(new Dimension(85, 20));
+		resetButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				GUI.run = false;
+				GUI.overlap = false;
+				GUI.pause = false;
+				GUI.showVector = false;
+				GUI.randomColors = false;
+				GUI.delay = 8; // 8 is standard speed
+				GUI.timer.setDelay((int) GUI.delay);
+				GUI.numParticles = 50;
+				GUI.particleSize = 11;
+				GUI.particleList = new ArrayList<particle>();
+				GUI.energyLoss = 0.7;
+				GUI.collisionConfirm = false;
+				GUI.particleParticleCollisionConfirm = false;
+				GUI.particleColor = Color.black;
+				GUI.backgroundColor = Color.white;
+				GUI.vectorColor = Color.black;
+				GUI.gravity[0] = 0;
+				GUI.gravity[1] = -1;
+				GUI.wind[0] = 0;
+				GUI.wind[1] = 0;
+				
+				numParticlesSelected.setText("50");
+				energySelected.setText("30");
+				speedMultiplier.setText("1.0");
+				gravity.setText("1.0");
+				wind.setText("0.0");
+				colorBox.setSelectedIndex(0);
+				backgroundColorBox.setSelectedIndex(9);
+				vectorColorBox.setSelectedIndex(0);
+				pauseButton.setText("Pause");
+				vectorButton.setText("Enable");
+				vectorColorLabel.setVisible(false);
+				vectorColorBox.setVisible(false);
+				backgroundColorLabel.setVisible(true);
+				backgroundColorBox.setVisible(true);
+				GUI.initialize(0, 50);
+			}
+		});
+		
 		
 		/*JButton accept = new JButton("Accept");
 		accept.setMnemonic(KeyEvent.VK_D);
@@ -257,43 +327,55 @@ public class UserInput extends JPanel implements KeyListener, ActionListener, Do
 		add(numParticlesSelected, constraints);
 		constraints.gridx = 0;
 		constraints.gridy = 2;
+		add(particleSizeLabel, constraints);
+		constraints.gridx = 1;
+		add(particleSizeSelected, constraints);
+		constraints.gridy = 3;
+		add(energySelected, constraints);
+		constraints.gridx = 0;
+		add(energyLabel, constraints);
+		constraints.gridy = 4;
 		add(speedLabel, constraints);
 		constraints.gridx = 1;
 		add(speedMultiplier, constraints);
 		constraints.gridx = 0;
-		constraints.gridy = 3;
+		constraints.gridy = 5;
 		add(gravityLabel, constraints);
 		constraints.gridx = 1;
 		add(gravity, constraints);
 		constraints.gridx = 0;
-		constraints.gridy = 4;
+		constraints.gridy = 6;
 		add(windLabel, constraints);
 		constraints.gridx = 1;
 		add(wind, constraints);
-		constraints.gridy = 5;
+		constraints.gridy = 7;
 		add(blank, constraints);
-		constraints.gridy = 6;
+		constraints.gridy = 8;
 		add(colorBox, constraints);
 		constraints.gridx = 0;
 		add(colorLabel, constraints);
-		constraints.gridy = 7;
+		constraints.gridy = 9;
 		add(backgroundColorLabel, constraints);
 		constraints.gridx = 1;
 		add(backgroundColorBox, constraints);
-		constraints.gridy = 8;
+		constraints.gridy = 10;
 		add(pauseButton, constraints);
-		constraints.gridy = 9;
+		constraints.gridy = 11;
 		add(vectorButton, constraints);
 		constraints.gridx = 0;
 		add(vectorLabel, constraints);
-		constraints.gridy = 10;
+		constraints.gridy = 12;
 		add(vectorColorLabel, constraints);
 		constraints.gridx = 1;
 		add(vectorColorBox, constraints);
-		constraints.gridy = 11;
+		constraints.gridy = 13;
 		add(randomColorButton, constraints);
 		constraints.gridx = 0;
 		add(randomColorLabel, constraints);
+		constraints.gridy = 14;
+		add(blank, constraints);
+		constraints.gridx = 1;
+		add(resetButton, constraints);
 	}
 	
 	@Override
