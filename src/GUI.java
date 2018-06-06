@@ -7,6 +7,9 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
+import java.awt.event.MouseMotionListener;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.GeneralPath;
@@ -33,7 +36,7 @@ import java.lang.reflect.Field;
 	// Add option to change the speed of the simulation by increasing/decreasing delay
 	// Make collisions based on a function (only for particle-particle)
 
-public class GUI extends JPanel implements KeyListener, ActionListener { // Remove keylistener if not using keys
+public class GUI extends JPanel implements /*KeyListener, */ActionListener, MouseListener, MouseMotionListener { // Remove keylistener if not using keys
 	private static final long serialVersionUID = 6040042718732238432L;
 	
 	static boolean run = false;
@@ -41,19 +44,21 @@ public class GUI extends JPanel implements KeyListener, ActionListener { // Remo
 	static boolean pause = false;
 	static boolean showVector = false;
 	static boolean randomColors = false;
+	static boolean cursor = false;
+	private boolean cursorConfirm = false;
+	private byte cursorMass = 1;
 	
 	static Timer timer;
 	static double delay = 8; // 8 is standard speed
 	
 	static int numParticles = 50; 
-	static byte particleSize = 11;
+	static int particleSize = 11;
+	static int cursorSize = 20;
 	static double energyLoss = 0.7;
 	
-	static int borderCoord[] = {0, 0}; // lLcation of top left corner of border. 
+	static int borderCoord[] = {0, 0}; // location of top left corner of border. 
 	
 	static ArrayList<particle> particleList = new ArrayList<particle>();
-	
-	static boolean collisionConfirm = false;
 	
 	// Vector arrow variables:
 	Path2D.Double path;
@@ -66,9 +71,22 @@ public class GUI extends JPanel implements KeyListener, ActionListener { // Remo
 	static Color particleColor = Color.black;
 	static Color backgroundColor = Color.white;
 	static Color vectorColor = Color.black;
+	static Color cursorColor = Color.black;
 	
 	private int borderWidth = 685;
 	private int borderHeight = 700;
+	private double cursorLocation[] = new double[2];
+	private double oldCursorLocation[] = new double[2];
+	private double cursorVelocity[] = new double[2];
+	private boolean emptyOldCursor = true;
+	
+	// Variables used for boundary collision detection
+	static boolean collisionConfirm = false;
+	Rectangle2D boundaries1 = new Rectangle2D.Double(borderCoord[0], borderCoord[1], 3, borderWidth + 15);
+	Rectangle2D boundaries2 = new Rectangle2D.Double(borderCoord[0], borderCoord[1], borderWidth, 3);
+	Rectangle2D boundaries3 = new Rectangle2D.Double(borderCoord[0] + borderWidth - 5, borderCoord[1], 3, borderHeight + 3);
+	Rectangle2D boundaries4 = new Rectangle2D.Double(borderCoord[0], borderCoord[1] + borderHeight, borderWidth, 3);
+	Rectangle2D boundaries = boundaries1.createUnion(boundaries2.createUnion(boundaries3.createUnion(boundaries4)));
 	
 	// for these forces if mass is being used, set the following values as accelerations.
 	public static double gravity[] = {0, -1}; // index 0 is horizontal, index 1 is vertical.
@@ -130,7 +148,9 @@ public class GUI extends JPanel implements KeyListener, ActionListener { // Remo
 	}
 	
 	public GUI() {
-		addKeyListener(this);
+		//addKeyListener(this);
+		addMouseListener(this);
+		addMouseMotionListener(this);
 		setFocusable(true);
 		setFocusTraversalKeysEnabled(false);
 		timer = new Timer((int) delay, this);
@@ -168,8 +188,17 @@ public class GUI extends JPanel implements KeyListener, ActionListener { // Remo
 		g2d.setColor(Color.black);
 		g2d.fillRect(borderCoord[0], borderCoord[1], 3, borderWidth + 15);
 		g2d.fillRect(borderCoord[0], borderCoord[1], borderWidth, 3);
-		g2d.fillRect(borderCoord[0] + borderWidth, borderCoord[1], 3, borderHeight + 3);
+		g2d.fillRect(borderCoord[0] + borderWidth - 5, borderCoord[1], 3, borderHeight + 3);
 		g2d.fillRect(borderCoord[0], borderCoord[1] + borderHeight, borderWidth, 3);
+		
+		// Cursor:
+		if(cursor) {
+			if((cursorLocation[0] < borderCoord[0] + borderWidth - 5) && (cursorLocation[0] > borderCoord[0] + 3) 
+					&& (cursorLocation[1] > 3) && (cursorLocation[1] < borderCoord[1] + borderHeight) && cursorConfirm) {
+				g2d.setColor(cursorColor);
+				g2d.fillOval((int) (cursorLocation[0] - (cursorSize/2)), (int) (cursorLocation[1] - (cursorSize/2)), cursorSize, cursorSize);
+			}
+		}
 		
 		// Particle:
 		for(int i = 0; i < numParticles; i++) {
@@ -232,12 +261,8 @@ public class GUI extends JPanel implements KeyListener, ActionListener { // Remo
 					// check if there is an entity nearby
 					if (overlap) {
 						overlap = false;
-						// update force based on location of entity and the existing natural forces
-						// inside
 					}
-				}
-				// Move particles here:
-				for (int i = 0; i < numParticles; i++) {
+					// Move particles here:
 					particleList.get(i).appliedForce = naturalForceCalc();
 					// Condition that there is a particle-particle collision:
 					if (particleList.get(i).particleParticleCollision) {
@@ -247,24 +272,73 @@ public class GUI extends JPanel implements KeyListener, ActionListener { // Remo
 					if (particleList.get(i).particleParticleCollision2) {
 						particleList.get(i).particleParticleCollision2 = false;
 						particleList.get(i).particleParticleCollision = true;
-					}					
+					}
+					
 					if (!particleList.get(i).particleParticleCollision) {
+						// Checking for collision with existing cursor
+						if(cursor && (new Ellipse2D.Double(
+								particleList.get(i).location[0] - (particleSize / 2),
+								particleList.get(i).location[1] - (particleSize / 2),
+								particleSize, particleSize)
+								.intersects(cursorLocation[0] - (cursorSize / 2), cursorLocation[1]
+								- (cursorSize / 2), cursorSize, cursorSize))) {
+
+							particleList.get(i).particleParticleCollision = true;
+							particleParticleCollisionConfirm = true;
+							
+							if(emptyOldCursor) {
+								emptyOldCursor = false;
+							} else {
+								cursorVelocity[0] = (cursorLocation[0] - oldCursorLocation[0]) / 10;
+								cursorVelocity[1] = (cursorLocation[1] - oldCursorLocation[1]) / 10;
+							}
+							oldCursorLocation[0] = cursorLocation[0];
+							oldCursorLocation[1] = cursorLocation[1];
+							
+							// Velocity calculation begins here:
+							double tempArrayi[] = new double[2];
+							for(int k = 0; k < 2; k++) {
+								tempArrayi[k] = cursorMass * cursorVelocity[k];
+								tempArrayi[k] += particleList.get(i).mass * particleList.get(i).velocity[k];
+								tempArrayi[k] += cursorMass * energyLoss * (cursorVelocity[k] - particleList.get(i).velocity[k]);
+								tempArrayi[k] /= cursorMass + particleList.get(i).mass;
+							}
+							
+							double midpoint[] = new double[2];
+							midpoint[0] = (particleList.get(i).location[0] + cursorLocation[0]) / 2;
+							midpoint[1] = (particleList.get(i).location[1] + cursorLocation[1]) / 2;
+							
+							// CONTINUE HERE, REMOVE  + VELOCITIES
+							
+							if (((particleList.get(i).velocity[0] > 0) && midpoint[0] > particleList.get(i).location[0])
+							|| ((particleList.get(i).velocity[0] < 0) && (midpoint[0] < particleList.get(i).location[0]))) {
+								particleList.get(i).particleParticleVelocity[0] = tempArrayi[0];
+							} else if (particleList.get(i).velocity[0] == 0) {
+								particleList.get(i).particleParticleVelocity[0] = tempArrayi[0];
+							}
+							if (((particleList.get(i).velocity[1] > 0) && midpoint[1] > particleList.get(i).location[1])
+							|| ((particleList.get(i).velocity[1] < 0) && (midpoint[1] < particleList.get(i).location[1]))) {
+								particleList.get(i).particleParticleVelocity[1] = tempArrayi[1];
+							} else if (particleList.get(i).velocity[1] == 0) {
+								particleList.get(i).particleParticleVelocity[1] = tempArrayi[1];
+							}
+						}
+						
+						// Checking for collision with areas set by cursor:
+						
+						
 						for (int j = 0; j < numParticles; j++) {
 							if ((i != j) && (new Ellipse2D.Double(
 									particleList.get(i).location[0] + particleList.get(i).velocity[0] - (particleSize / 2),
 									particleList.get(i).location[1] + particleList.get(i).velocity[1] - (particleSize / 2),
 									particleSize, particleSize)
-									.intersects(
-											particleList.get(j).location[0] + particleList.get(j).velocity[0]
-													- (particleSize / 2),
-													particleList.get(j).location[1] + particleList.get(j).velocity[1]
-															- (particleSize / 2),
-															particleSize, particleSize))) {
+									.intersects(particleList.get(j).location[0] + particleList.get(j).velocity[0]
+									- (particleSize / 2), particleList.get(j).location[1] + particleList.get(j).velocity[1]
+									- (particleSize / 2), particleSize, particleSize))) {
 								particleList.get(i).particleParticleCollision = true;
 								particleParticleCollisionConfirm = true;
 								
 								// Velocity calculation begins here:
-								
 								double tempArrayi[] = new double[2];
 								double tempArrayj[] = new double[2];
 								for(int k = 0; k < 2; k++) {
@@ -344,7 +418,7 @@ public class GUI extends JPanel implements KeyListener, ActionListener { // Remo
 								}
 							}
 						}
-	
+						
 						// Condition that there is a boundary collision:
 						// Here, 3 and 700 are the min and max boundaries respectively.
 						if (!collisionConfirm) {
@@ -421,7 +495,7 @@ public class GUI extends JPanel implements KeyListener, ActionListener { // Remo
 		}
 	}
 	
-	@Override
+	/*@Override
 	public void keyTyped(KeyEvent e) {
 		// TODO Auto-generated method stub
 		
@@ -437,6 +511,49 @@ public class GUI extends JPanel implements KeyListener, ActionListener { // Remo
 	public void keyReleased(KeyEvent e) {
 		// TODO Auto-generated method stub
 		
+	}*/
+
+	@Override
+	public void mouseDragged(MouseEvent e) {
+		// TODO Auto-generated method stub
+		
 	}
-	
+
+	@Override
+	public void mouseMoved(MouseEvent e) {
+		// TODO Auto-generated method stub
+		cursorLocation[0] = e.getX();
+		cursorLocation[1] = e.getY();
+	}
+
+	@Override
+	public void mouseClicked(MouseEvent e) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void mousePressed(MouseEvent e) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void mouseReleased(MouseEvent e) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void mouseEntered(MouseEvent e) {
+		// TODO Auto-generated method stub
+		cursorConfirm = true;
+		emptyOldCursor = true;
+	}
+
+	@Override
+	public void mouseExited(MouseEvent e) {
+		// TODO Auto-generated method stub
+		cursorConfirm = false;
+	}
 }

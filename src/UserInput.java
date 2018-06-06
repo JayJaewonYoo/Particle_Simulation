@@ -85,7 +85,7 @@ public class UserInput extends JPanel implements KeyListener, ActionListener, Do
 		particleSizeSelected.setText("11");
 		particleSizeSelected.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				GUI.particleSize = (byte) Integer.parseInt(particleSizeSelected.getText());
+				GUI.particleSize = Integer.parseInt(particleSizeSelected.getText());
 			}
 		});
 		
@@ -244,6 +244,62 @@ public class UserInput extends JPanel implements KeyListener, ActionListener, Do
 			}
 		});
 		
+		JLabel cursorSizeLabel = new JLabel("Size of Cursor: ");
+		cursorSizeLabel.setVisible(false);
+		JTextField cursorSizeSelected = new JTextField(4);
+		cursorSizeSelected.setVisible(false);
+		cursorSizeLabel.setLabelFor(cursorSizeSelected);
+		cursorSizeSelected.setText("20");
+		cursorSizeSelected.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				GUI.cursorSize = Integer.parseInt(cursorSizeSelected.getText());
+			}
+		});
+		
+		JLabel cursorColorLabel = new JLabel("Cursor Color: ");
+		cursorColorLabel.setVisible(false);
+		JComboBox<String> cursorColorBox = new JComboBox<String>(colorOptions);
+		cursorColorBox.setPreferredSize(new Dimension(85, 20));
+		cursorColorBox.setSelectedItem("Black");
+		cursorColorBox.setEditable(false);
+		cursorColorBox.setVisible(false);
+		cursorColorBox.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				try {
+					Field tempField2 = Class.forName("java.awt.Color").getField(((String)cursorColorBox.getSelectedItem()).toLowerCase());
+					GUI.cursorColor = (Color)tempField2.get(null);
+				} catch (Exception e1) {
+					GUI.cursorColor = Color.black;
+					cursorColorBox.setSelectedItem("Black");
+					e1.printStackTrace();
+				}
+			}
+		});
+		
+		JLabel cursorLabel = new JLabel("Cursor: ");
+		JButton cursorButton = new JButton("Enable");
+		cursorButton.setPreferredSize(new Dimension(85, 20));
+		cursorButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				if(cursorButton.getText() == "Enable") {
+					GUI.cursor = true;
+					cursorColorLabel.setVisible(true);
+					cursorColorBox.setVisible(true);
+					cursorSizeLabel.setVisible(true);
+					cursorSizeSelected.setVisible(true);
+					cursorButton.setText("Disable");
+				}
+				else {
+					GUI.cursor = false;
+					cursorColorLabel.setVisible(false);
+					cursorColorBox.setVisible(false);
+					cursorSizeLabel.setVisible(false);
+					cursorSizeSelected.setVisible(false);
+					cursorButton.setText("Enable");
+				}
+			}
+		});
+		
 		JLabel randomColorLabel = new JLabel("Random Colors: ");
 		JButton randomColorButton = new JButton("Enable");
 		randomColorButton.setPreferredSize(new Dimension(85, 20));
@@ -282,6 +338,9 @@ public class UserInput extends JPanel implements KeyListener, ActionListener, Do
 				GUI.numParticles = 50;
 				GUI.particleSize = 11;
 				GUI.particleList = new ArrayList<particle>();
+				GUI.cursor = false;
+				GUI.cursorSize = 20;
+				GUI.cursorColor = Color.black;
 				GUI.energyLoss = 0.7;
 				GUI.collisionConfirm = false;
 				GUI.particleParticleCollisionConfirm = false;
@@ -300,6 +359,9 @@ public class UserInput extends JPanel implements KeyListener, ActionListener, Do
 				wind.setText("0.0");
 				colorBox.setSelectedIndex(0);
 				backgroundColorBox.setSelectedIndex(9);
+				cursorButton.setText("Enable");
+				cursorSizeSelected.setText("20");
+				cursorColorBox.setSelectedIndex(0);
 				vectorColorBox.setSelectedIndex(0);
 				pauseButton.setText("Pause");
 				vectorButton.setText("Enable");
@@ -307,6 +369,10 @@ public class UserInput extends JPanel implements KeyListener, ActionListener, Do
 				vectorColorBox.setVisible(false);
 				backgroundColorLabel.setVisible(true);
 				backgroundColorBox.setVisible(true);
+				cursorColorLabel.setVisible(false);
+				cursorColorBox.setVisible(false);
+				cursorSizeLabel.setVisible(false);
+				cursorSizeSelected.setVisible(false);
 				GUI.initialize(0, 50);
 			}
 		});
@@ -359,20 +425,35 @@ public class UserInput extends JPanel implements KeyListener, ActionListener, Do
 		constraints.gridx = 1;
 		add(backgroundColorBox, constraints);
 		constraints.gridy = 10;
-		add(pauseButton, constraints);
+		add(cursorButton, constraints);
+		constraints.gridx = 0;
+		add(cursorLabel, constraints);
 		constraints.gridy = 11;
+		add(cursorSizeLabel, constraints);
+		constraints.gridx = 1;
+		add(cursorSizeSelected, constraints);
+		constraints.gridy = 12;
+		add(cursorColorBox, constraints);
+		constraints.gridx = 0;
+		add(cursorColorLabel, constraints);
+		constraints.gridx = 1;
+		constraints.gridy = 13;
 		add(vectorButton, constraints);
 		constraints.gridx = 0;
 		add(vectorLabel, constraints);
-		constraints.gridy = 12;
+		constraints.gridy = 14;
 		add(vectorColorLabel, constraints);
 		constraints.gridx = 1;
 		add(vectorColorBox, constraints);
-		constraints.gridy = 13;
+		constraints.gridy = 15;
 		add(randomColorButton, constraints);
 		constraints.gridx = 0;
 		add(randomColorLabel, constraints);
-		constraints.gridy = 14;
+		constraints.gridy = 16;
+		constraints.gridx = 1;
+		add(pauseButton, constraints);
+		constraints.gridx = 0;
+		constraints.gridy = 17;
 		add(blank, constraints);
 		constraints.gridx = 1;
 		add(resetButton, constraints);
