@@ -516,21 +516,20 @@ public class GUI extends JPanel implements ActionListener, MouseListener, MouseM
 	}
 	
 	public void mouseClicked(MouseEvent e) {
-		if(cursor) { 
-			// Left Click:
-			if(e.getButton() == MouseEvent.BUTTON1) {
-				cursorParticle tempCursorParticle = new cursorParticle();
-				tempCursorParticle.location[0] = e.getX() - (cursorSize / 2);
-				tempCursorParticle.location[1] = e.getY() - (cursorSize / 2);
-				tempCursorParticle.size = cursorSize;
-				tempCursorParticle.color = cursorColor;
-				cursorParticleList.add(tempCursorParticle);
+		// Left Click:
+		if(cursor && e.getButton() == MouseEvent.BUTTON1) {
+			cursorParticle tempCursorParticle = new cursorParticle();
+			tempCursorParticle.location[0] = e.getX() - (cursorSize / 2);
+			tempCursorParticle.location[1] = e.getY() - (cursorSize / 2);
+			tempCursorParticle.size = cursorSize;
+			tempCursorParticle.color = cursorColor;
+			cursorParticleList.add(tempCursorParticle);
 			// Right Click:
-			} else if(e.getButton() == MouseEvent.BUTTON3) {
-				for(int i = 0; i <cursorParticleList.size(); i++) {
-					if(((Math.pow((e.getX() - cursorParticleList.get(i).location[0]), 2)) + (Math.pow((e.getY() - cursorParticleList.get(i).location[1]), 2))) < Math.pow((cursorParticleList.get(i).size), 2)) {
-						cursorParticleList.remove(i);
-					}
+		}
+		if(e.getButton() == MouseEvent.BUTTON3) {
+			for(int i = 0; i <cursorParticleList.size(); i++) {
+				if(((Math.pow((e.getX() - cursorParticleList.get(i).location[0]), 2)) + (Math.pow((e.getY() - cursorParticleList.get(i).location[1]), 2))) < Math.pow((cursorParticleList.get(i).size), 2)) {
+					cursorParticleList.remove(i);
 				}
 			}
 		}
