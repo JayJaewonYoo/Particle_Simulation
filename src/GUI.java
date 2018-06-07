@@ -1,21 +1,14 @@
-import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.Polygon;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Ellipse2D;
-import java.awt.geom.GeneralPath;
-import java.awt.geom.Line2D;
 import java.awt.geom.Path2D;
-import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.Random;
 
@@ -23,42 +16,35 @@ import javax.swing.JPanel;
 import javax.swing.Timer;
 import javax.swing.UIManager;
 
-import java.util.ArrayList;
-import java.util.Random;
 import java.lang.Math;
 import java.lang.reflect.Field;
 
-// To Do:
-	// Figure out where particles are colliding relative to one another
-	// Allow user to manipulate number of particles
-	// Allow user to change natural forces
-	// Make the width/height of borders into variables that can be manipulated
-	// Add option to change the speed of the simulation by increasing/decreasing delay
-	// Make collisions based on a function (only for particle-particle)
-
-public class GUI extends JPanel implements /*KeyListener, */ActionListener, MouseListener, MouseMotionListener { // Remove keylistener if not using keys
+public class GUI extends JPanel implements ActionListener, MouseListener, MouseMotionListener { // Remove keylistener if not using keys
 	private static final long serialVersionUID = 6040042718732238432L;
 	
+	// Standard boolean variables:
 	static boolean run = false;
 	static boolean overlap = false;
 	static boolean pause = false;
 	static boolean showVector = false;
 	static boolean randomColors = false;
-	static boolean cursor = false;
-	private boolean cursorConfirm = false;
-	private byte cursorMass = 1;
 	
+	// Timer variables:
 	static Timer timer;
 	static double delay = 8; // 8 is standard speed
 	
+	// Particle variables:
 	static int numParticles = 50; 
 	static int particleSize = 11;
-	static int cursorSize = 20;
+	static ArrayList<particle> particleList = new ArrayList<particle>();
+	
+	// Energy loss variables:
 	static double energyLoss = 0.7;
 	
+	// Border variables:
 	static int borderCoord[] = {0, 0}; // location of top left corner of border. 
-	
-	static ArrayList<particle> particleList = new ArrayList<particle>();
+	private int borderWidth = 678;
+	private int borderHeight = 700;
 	
 	// Vector arrow variables:
 	Path2D.Double path;
@@ -68,27 +54,27 @@ public class GUI extends JPanel implements /*KeyListener, */ActionListener, Mous
 	// Variables used for particle-particle collision detection:
 	static boolean particleParticleCollisionConfirm = false;
 	
+	// Colors variables:
 	static Color particleColor = Color.black;
 	static Color backgroundColor = Color.white;
 	static Color vectorColor = Color.black;
 	static Color cursorColor = Color.black;
 	
-	private int borderWidth = 685;
-	private int borderHeight = 700;
+	// Cursor variables:
+	static boolean cursor = false;
+	static int cursorSize = 20;
+	private boolean cursorConfirm = false;
+	private byte cursorMass = 1;
 	private double cursorLocation[] = new double[2];
 	private double oldCursorLocation[] = new double[2];
 	private double cursorVelocity[] = new double[2];
 	private boolean emptyOldCursor = true;
+	static ArrayList<cursorParticle> cursorParticleList = new ArrayList<cursorParticle>();
 	
 	// Variables used for boundary collision detection
 	static boolean collisionConfirm = false;
-	Rectangle2D boundaries1 = new Rectangle2D.Double(borderCoord[0], borderCoord[1], 3, borderWidth + 15);
-	Rectangle2D boundaries2 = new Rectangle2D.Double(borderCoord[0], borderCoord[1], borderWidth, 3);
-	Rectangle2D boundaries3 = new Rectangle2D.Double(borderCoord[0] + borderWidth - 5, borderCoord[1], 3, borderHeight + 3);
-	Rectangle2D boundaries4 = new Rectangle2D.Double(borderCoord[0], borderCoord[1] + borderHeight, borderWidth, 3);
-	Rectangle2D boundaries = boundaries1.createUnion(boundaries2.createUnion(boundaries3.createUnion(boundaries4)));
 	
-	// for these forces if mass is being used, set the following values as accelerations.
+	// Force variables:
 	public static double gravity[] = {0, -1}; // index 0 is horizontal, index 1 is vertical.
 	public static double wind[] = {0, 0}; // positive indicates right, negative indicates left.
 
@@ -109,9 +95,8 @@ public class GUI extends JPanel implements /*KeyListener, */ActionListener, Mous
 			temp = new Random();
 			tempLocationArray[1] = temp.nextInt(borderCoord[1] + 640) + borderCoord[1];
 			for(int j = 0; j < i; j++) {
-				if(new Ellipse2D.Double(tempLocationArray[0] - (particleSize/2), tempLocationArray[1] - (particleSize/2), particleSize + 1, particleSize + 1).intersects
-						(particleList.get(j).location[0] - (particleSize/2), particleList.get(j).location[1] - (particleSize/2), particleSize + 1, particleSize + 1)) {
-				
+				if(new Ellipse2D.Double(tempLocationArray[0] - (particleSize/2), tempLocationArray[1] - (particleSize/2), particleSize + 1, particleSize + 1)
+				.intersects(particleList.get(j).location[0] - (particleSize/2), particleList.get(j).location[1] - (particleSize/2), particleSize + 1, particleSize + 1)) {
 					overlap = true;
 					break;
 				}
@@ -126,8 +111,7 @@ public class GUI extends JPanel implements /*KeyListener, */ActionListener, Mous
 			if(overlap) {
 				overlap = false;
 				i--;
-			}
-			else {
+			} else {
 				particleList.get(i).location = tempLocationArray;
 			}
 			particleList.get(i).appliedForce = naturalForceCalc();
@@ -135,20 +119,21 @@ public class GUI extends JPanel implements /*KeyListener, */ActionListener, Mous
 	}
 	
 	public static double[] naturalForceCalc() {
-		// calculates natural forces (ie: forces that are not from other entities) to affect solids
-		// index 0 is horizontal, index 1 is vertical
+		// Calculates natural forces (ie: forces that are not from other entities) to affect particles.
+		// Index 0 is horizontal, index 1 is vertical.
 		double[] res = new double[2];
 		res[0] += gravity[0];
 		res[0] += wind[0];
 		
+		// Subtraction used because gravity affects particles downward.
 		res[1] -= gravity[1];
 		res[1] -= wind[1];
 		
 		return res;
 	}
 	
+	// GUI implementation:
 	public GUI() {
-		//addKeyListener(this);
 		addMouseListener(this);
 		addMouseMotionListener(this);
 		setFocusable(true);
@@ -157,6 +142,7 @@ public class GUI extends JPanel implements /*KeyListener, */ActionListener, Mous
 		timer.start();
 	}
 	
+	// Producing painted GUI:
 	public void paintComponent(Graphics g) {
 		super.paintComponent(g);
 		Graphics2D g2d = (Graphics2D) g.create();
@@ -168,25 +154,12 @@ public class GUI extends JPanel implements /*KeyListener, */ActionListener, Mous
 		g2d.fillRect(0, 0, 730, borderHeight + 3);
 
 		// Background within Borders:
-		/*if(randomColors) {
-			Field tempField;
-			try {
-				tempField = Class.forName("java.awt.Color").getField((UserInput.colorOptions[randomInt.nextInt(9)].toLowerCase()));
-				//g2d.setColor((Color)tempField.get(null));
-				randomInt = new Random();
-			} catch (Exception e1) {
-				g2d.setColor(Color.black);
-				e1.printStackTrace();
-			}
-		}
-		else {*/
-			g2d.setColor(backgroundColor);
-		//}
+		g2d.setColor(backgroundColor);
 		g2d.fillRect(borderCoord[0] + 1, borderCoord[1] + 1, borderWidth, borderHeight);
 		
 		// Borders:
 		g2d.setColor(Color.black);
-		g2d.fillRect(borderCoord[0], borderCoord[1], 3, borderWidth + 15);
+		g2d.fillRect(borderCoord[0], borderCoord[1], 3, borderHeight);
 		g2d.fillRect(borderCoord[0], borderCoord[1], borderWidth, 3);
 		g2d.fillRect(borderCoord[0] + borderWidth - 5, borderCoord[1], 3, borderHeight + 3);
 		g2d.fillRect(borderCoord[0], borderCoord[1] + borderHeight, borderWidth, 3);
@@ -200,7 +173,7 @@ public class GUI extends JPanel implements /*KeyListener, */ActionListener, Mous
 			}
 		}
 		
-		// Particle:
+		// Particles:
 		for(int i = 0; i < numParticles; i++) {
 			if(randomColors) {
 				Field tempField;
@@ -244,6 +217,12 @@ public class GUI extends JPanel implements /*KeyListener, */ActionListener, Mous
 			g2d.fillOval(particleList.get(i).location[0], particleList.get(i).location[1], particleSize, particleSize);
 		}
 		
+		// Areas set by cursor:
+		for(int i = 0; i < cursorParticleList.size(); i++) {
+			g2d.setColor(cursorParticleList.get(i).color);
+			g2d.fillOval(cursorParticleList.get(i).location[0], cursorParticleList.get(i).location[1], cursorParticleList.get(i).size, cursorParticleList.get(i).size);
+		}
+		
 		g2d.dispose();
 	}
 
@@ -254,17 +233,18 @@ public class GUI extends JPanel implements /*KeyListener, */ActionListener, Mous
 		if(!run) {
 			run = true;
 			initialize(0, 50);
-		}
-		else {
+		} else {
 			if(!pause) {
 				for (int i = 0; i < numParticles; i++) {
-					// check if there is an entity nearby
+					// Checks if an entity is nearby:
 					if (overlap) {
 						overlap = false;
 					}
-					// Move particles here:
+					
+					// Particle movement calculations begin here:
 					particleList.get(i).appliedForce = naturalForceCalc();
-					// Condition that there is a particle-particle collision:
+					
+					// Condition that there was a particle-particle collision:
 					if (particleList.get(i).particleParticleCollision) {
 						particleList.get(i).particleParticleCollision = false;
 						particleList.get(i).velocity = particleList.get(i).particleParticleVelocity;
@@ -275,14 +255,13 @@ public class GUI extends JPanel implements /*KeyListener, */ActionListener, Mous
 					}
 					
 					if (!particleList.get(i).particleParticleCollision) {
-						// Checking for collision with existing cursor
+						// Checking for collision with cursor:
 						if(cursor && (new Ellipse2D.Double(
-								particleList.get(i).location[0] - (particleSize / 2),
-								particleList.get(i).location[1] - (particleSize / 2),
-								particleSize, particleSize)
-								.intersects(cursorLocation[0] - (cursorSize / 2), cursorLocation[1]
-								- (cursorSize / 2), cursorSize, cursorSize))) {
-
+						particleList.get(i).location[0] - (particleSize / 2),
+						particleList.get(i).location[1] - (particleSize / 2),
+						particleSize, particleSize)
+						.intersects(cursorLocation[0] - (cursorSize / 2), cursorLocation[1] - (cursorSize / 2),
+						cursorSize, cursorSize))) {
 							particleList.get(i).particleParticleCollision = true;
 							particleParticleCollisionConfirm = true;
 							
@@ -295,7 +274,7 @@ public class GUI extends JPanel implements /*KeyListener, */ActionListener, Mous
 							oldCursorLocation[0] = cursorLocation[0];
 							oldCursorLocation[1] = cursorLocation[1];
 							
-							// Velocity calculation begins here:
+							// Velocity calculations:
 							double tempArrayi[] = new double[2];
 							for(int k = 0; k < 2; k++) {
 								tempArrayi[k] = cursorMass * cursorVelocity[k];
@@ -304,11 +283,10 @@ public class GUI extends JPanel implements /*KeyListener, */ActionListener, Mous
 								tempArrayi[k] /= cursorMass + particleList.get(i).mass;
 							}
 							
+							// Calculations to ensure velocity manipulations are performed correctly:
 							double midpoint[] = new double[2];
 							midpoint[0] = (particleList.get(i).location[0] + cursorLocation[0]) / 2;
 							midpoint[1] = (particleList.get(i).location[1] + cursorLocation[1]) / 2;
-							
-							// CONTINUE HERE, REMOVE  + VELOCITIES
 							
 							if (((particleList.get(i).velocity[0] > 0) && midpoint[0] > particleList.get(i).location[0])
 							|| ((particleList.get(i).velocity[0] < 0) && (midpoint[0] < particleList.get(i).location[0]))) {
@@ -325,20 +303,71 @@ public class GUI extends JPanel implements /*KeyListener, */ActionListener, Mous
 						}
 						
 						// Checking for collision with areas set by cursor:
-						
-						
-						for (int j = 0; j < numParticles; j++) {
+						for(int j = 0; j < cursorParticleList.size(); j++) {
 							if ((i != j) && (new Ellipse2D.Double(
-									particleList.get(i).location[0] + particleList.get(i).velocity[0] - (particleSize / 2),
-									particleList.get(i).location[1] + particleList.get(i).velocity[1] - (particleSize / 2),
-									particleSize, particleSize)
-									.intersects(particleList.get(j).location[0] + particleList.get(j).velocity[0]
-									- (particleSize / 2), particleList.get(j).location[1] + particleList.get(j).velocity[1]
-									- (particleSize / 2), particleSize, particleSize))) {
+							particleList.get(i).location[0] + particleList.get(i).velocity[0] - (particleSize / 2),
+							particleList.get(i).location[1] + particleList.get(i).velocity[1] - (particleSize / 2),
+							particleSize, particleSize)
+							.intersects(cursorParticleList.get(j).location[0] - (cursorParticleList.get(j).size / 2), 
+							cursorParticleList.get(j).location[1] - (cursorParticleList.get(j).size / 2), 
+							cursorParticleList.get(j).size, cursorParticleList.get(j).size))) {
 								particleList.get(i).particleParticleCollision = true;
 								particleParticleCollisionConfirm = true;
 								
-								// Velocity calculation begins here:
+								// Calculations to ensure velocity manipulations are performed correctly:
+								double midpoint[] = new double[2];
+								midpoint[0] = (particleList.get(i).location[0] + particleList.get(i).velocity[0] + cursorParticleList.get(j).location[0]) / 2;
+								midpoint[1] = (particleList.get(i).location[1] + particleList.get(i).velocity[1] + cursorParticleList.get(j).location[1]) / 2;
+								
+								
+								//CONTINUE HERE:
+								if (((particleList.get(i).velocity[0] > 0)
+								&& midpoint[0] > particleList.get(i).location[0] + particleList.get(i).velocity[0])
+								|| ((particleList.get(i).velocity[0] < 0)
+								&& (midpoint[0] < particleList.get(i).location[0] + particleList.get(i).velocity[0]))) {
+									particleList.get(i).particleParticleVelocity[0] *= -1;
+									particleList.get(i).particleParticleVelocity[0] += (particleList.get(i).appliedForce[0] / particleList.get(i).mass) * particleList.get(i).time;
+									particleList.get(i).particleParticleVelocity[0] *= energyLoss;
+									particleList.get(i).particleParticleVelocity[1] *= energyLoss;
+									particleList.get(i).location[0] += particleList.get(i).velocity[0];
+								} else if (particleList.get(i).velocity[0] == 0) {
+									particleList.get(i).particleParticleVelocity[0] *= -1;
+									particleList.get(i).particleParticleVelocity[0] += (particleList.get(i).appliedForce[0] / particleList.get(i).mass) * particleList.get(i).time;
+									particleList.get(i).particleParticleVelocity[0] *= energyLoss;
+									particleList.get(i).particleParticleVelocity[1] *= energyLoss;
+									particleList.get(i).location[0] += particleList.get(i).velocity[0];
+								}
+								if (((particleList.get(i).velocity[1] > 0)
+								&& midpoint[1] > particleList.get(i).location[1] + particleList.get(i).velocity[1])
+								|| ((particleList.get(i).velocity[1] < 0)
+								&& (midpoint[1] < particleList.get(i).location[1] + particleList.get(i).velocity[1]))) {
+									particleList.get(i).particleParticleVelocity[1] *= -1;
+									particleList.get(i).particleParticleVelocity[1] += (particleList.get(i).appliedForce[1] / particleList.get(i).mass) * particleList.get(i).time;
+									particleList.get(i).particleParticleVelocity[1] *= energyLoss;
+									particleList.get(i).particleParticleVelocity[0] *= energyLoss;
+									particleList.get(i).location[0] += particleList.get(i).velocity[0];
+								} else if (particleList.get(i).velocity[1] == 0) {
+									particleList.get(i).particleParticleVelocity[1] *= -1;
+									particleList.get(i).particleParticleVelocity[1] += (particleList.get(i).appliedForce[1] / particleList.get(i).mass) * particleList.get(i).time;
+									particleList.get(i).particleParticleVelocity[1] *= energyLoss;
+									particleList.get(i).particleParticleVelocity[0] *= energyLoss;
+									particleList.get(i).location[0] += particleList.get(i).velocity[0];
+								}
+							}
+						}
+						
+						// Particle-particle collisions: 
+						for (int j = 0; j < numParticles; j++) {
+							if ((i != j) && (new Ellipse2D.Double(
+						particleList.get(i).location[0] + particleList.get(i).velocity[0] - (particleSize / 2),
+						particleList.get(i).location[1] + particleList.get(i).velocity[1] - (particleSize / 2), particleSize, particleSize)
+						.intersects(particleList.get(j).location[0] + particleList.get(j).velocity[0]
+						- (particleSize / 2), particleList.get(j).location[1] + particleList.get(j).velocity[1]
+						- (particleSize / 2), particleSize, particleSize))) {
+								particleList.get(i).particleParticleCollision = true;
+								particleParticleCollisionConfirm = true;
+								
+								// Velocity calculation:
 								double tempArrayi[] = new double[2];
 								double tempArrayj[] = new double[2];
 								for(int k = 0; k < 2; k++) {
@@ -351,26 +380,23 @@ public class GUI extends JPanel implements /*KeyListener, */ActionListener, Mous
 									tempArrayi[k] += energyLoss * (particleList.get(j).velocity[k] - particleList.get(i).velocity[k]);
 								}
 								
+								// Calculations to ensure velocity manipulations are performed correctly:
 								double midpoint[] = new double[2];
-								midpoint[0] = (particleList.get(i).location[0] + particleList.get(i).velocity[0]
-										+ particleList.get(j).location[0] + particleList.get(j).velocity[0]) / 2;
-								midpoint[1] = (particleList.get(i).location[1] + particleList.get(i).velocity[1]
-										+ particleList.get(j).location[1] + particleList.get(j).velocity[1]) / 2;
+								midpoint[0] = (particleList.get(i).location[0] + particleList.get(i).velocity[0] + particleList.get(j).location[0] + particleList.get(j).velocity[0]) / 2;
+								midpoint[1] = (particleList.get(i).location[1] + particleList.get(i).velocity[1] + particleList.get(j).location[1] + particleList.get(j).velocity[1]) / 2;
 								
 								if (((particleList.get(i).velocity[0] > 0)
-										&& midpoint[0] > particleList.get(i).location[0] + particleList.get(i).velocity[0])
-										|| ((particleList.get(i).velocity[0] < 0)
-												&& (midpoint[0] < particleList.get(i).location[0]
-														+ particleList.get(i).velocity[0]))) {
+								&& midpoint[0] > particleList.get(i).location[0] + particleList.get(i).velocity[0])
+								|| ((particleList.get(i).velocity[0] < 0)
+								&& (midpoint[0] < particleList.get(i).location[0] + particleList.get(i).velocity[0]))) {
 									particleList.get(i).particleParticleVelocity[0] = tempArrayi[0];
 								} else if (particleList.get(i).velocity[0] == 0) {
 									particleList.get(i).particleParticleVelocity[0] = tempArrayi[0];
 								}
 								if (((particleList.get(i).velocity[1] > 0)
-										&& midpoint[1] > particleList.get(i).location[1] + particleList.get(i).velocity[1])
-										|| ((particleList.get(i).velocity[1] < 0)
-												&& (midpoint[1] < particleList.get(i).location[1]
-														+ particleList.get(i).velocity[1]))) {
+								&& midpoint[1] > particleList.get(i).location[1] + particleList.get(i).velocity[1])
+								|| ((particleList.get(i).velocity[1] < 0)
+								&& (midpoint[1] < particleList.get(i).location[1] + particleList.get(i).velocity[1]))) {
 									particleList.get(i).particleParticleVelocity[1] = tempArrayi[1];
 								} else if (particleList.get(i).velocity[1] == 0) {
 									particleList.get(i).particleParticleVelocity[1] = tempArrayi[1];
@@ -378,39 +404,31 @@ public class GUI extends JPanel implements /*KeyListener, */ActionListener, Mous
 								if (i > j) {
 									particleList.get(j).particleParticleCollision = true;
 									if (((particleList.get(j).velocity[0] > 0)
-											&& midpoint[0] > particleList.get(j).location[0]
-													+ particleList.get(j).velocity[0])
-											|| ((particleList.get(j).velocity[0] < 0)
-													&& (midpoint[0] < particleList.get(j).location[0]
-															+ particleList.get(j).velocity[0]))) {
+									&& midpoint[0] > particleList.get(j).location[0] + particleList.get(j).velocity[0])
+									|| ((particleList.get(j).velocity[0] < 0)
+									&& (midpoint[0] < particleList.get(j).location[0] + particleList.get(j).velocity[0]))) {
 										particleList.get(j).particleParticleVelocity[0] = tempArrayj[0];
 									}
 									if (((particleList.get(j).velocity[1] > 0)
-											&& midpoint[1] > particleList.get(j).location[1]
-													+ particleList.get(j).velocity[1])
-											|| ((particleList.get(j).velocity[1] < 0)
-													&& (midpoint[1] < particleList.get(j).location[1]
-															+ particleList.get(j).velocity[1]))) {
+									&& midpoint[1] > particleList.get(j).location[1] + particleList.get(j).velocity[1])
+									|| ((particleList.get(j).velocity[1] < 0)
+									&& (midpoint[1] < particleList.get(j).location[1] + particleList.get(j).velocity[1]))) {
 										particleList.get(j).particleParticleVelocity[1] = tempArrayj[1];
 									}
 								} else {
 									particleList.get(j).particleParticleCollision2 = true;
 									if (((particleList.get(j).velocity[0] > 0)
-											&& midpoint[0] > particleList.get(j).location[0]
-													+ particleList.get(j).velocity[0])
-											|| ((particleList.get(j).velocity[0] < 0)
-													&& (midpoint[0] < particleList.get(j).location[0]
-															+ particleList.get(j).velocity[0]))) {
+									&& midpoint[0] > particleList.get(j).location[0] + particleList.get(j).velocity[0])
+									|| ((particleList.get(j).velocity[0] < 0)
+									&& (midpoint[0] < particleList.get(j).location[0] + particleList.get(j).velocity[0]))) {
 										particleList.get(j).particleParticleVelocity[0] = tempArrayj[0];
 									} else if (particleList.get(j).velocity[0] == 0) {
 										particleList.get(j).particleParticleVelocity[0] = tempArrayj[0];
 									}
 									if (((particleList.get(j).velocity[1] > 0)
-											&& midpoint[1] > particleList.get(j).location[1]
-													+ particleList.get(j).velocity[1])
-											|| ((particleList.get(j).velocity[1] < 0)
-													&& (midpoint[1] < particleList.get(j).location[1]
-															+ particleList.get(j).velocity[1]))) {
+									&& midpoint[1] > particleList.get(j).location[1] + particleList.get(j).velocity[1])
+									|| ((particleList.get(j).velocity[1] < 0)
+									&& (midpoint[1] < particleList.get(j).location[1] + particleList.get(j).velocity[1]))) {
 										particleList.get(j).particleParticleVelocity[1] = tempArrayj[1];
 									} else if (particleList.get(j).velocity[1] == 0) {
 										particleList.get(j).particleParticleVelocity[1] = tempArrayj[1];
@@ -420,40 +438,39 @@ public class GUI extends JPanel implements /*KeyListener, */ActionListener, Mous
 						}
 						
 						// Condition that there is a boundary collision:
-						// Here, 3 and 700 are the min and max boundaries respectively.
 						if (!collisionConfirm) {
 							if ((particleList.get(i).location[0] + particleList.get(i).velocity[0] < borderCoord[0])
-									&& (particleList.get(i).velocity[0] < 0)) {
+							&& (particleList.get(i).velocity[0] < 0)) {
 								particleList.get(i).velocity[0] *= -1;
-								particleList.get(i).velocity[0] += (particleList.get(i).appliedForce[0]
-										/ particleList.get(i).mass) * particleList.get(i).time;
+								particleList.get(i).velocity[0] += (particleList.get(i).appliedForce[0] / particleList.get(i).mass) * particleList.get(i).time;
 								particleList.get(i).velocity[0] *= energyLoss;
+								particleList.get(i).velocity[1] *= energyLoss;
 								particleList.get(i).location[0] += particleList.get(i).velocity[0];
 								collisionConfirm = true;
-							} else if ((particleList.get(i).location[0]
-									+ particleList.get(i).velocity[0] > (borderCoord[0] + borderWidth) - particleSize)
-									&& (particleList.get(i).velocity[0] > 0)) {
+							} else if ((particleList.get(i).location[0] + particleList.get(i).velocity[0] > (borderCoord[0] + borderWidth) - particleSize)
+							&& (particleList.get(i).velocity[0] > 0)) {
 								particleList.get(i).velocity[0] *= -1;
-								particleList.get(i).velocity[0] += (particleList.get(i).appliedForce[0]
-										/ particleList.get(i).mass) * particleList.get(i).time;
+								particleList.get(i).velocity[0] += (particleList.get(i).appliedForce[0] / particleList.get(i).mass) * particleList.get(i).time;
 								particleList.get(i).velocity[0] *= energyLoss;
+								particleList.get(i).velocity[1] *= energyLoss;
 								particleList.get(i).location[0] += particleList.get(i).velocity[0];
 								collisionConfirm = true;
 							}
 							if ((particleList.get(i).location[1] + particleList.get(i).velocity[1] < borderCoord[1])
-									&& (particleList.get(i).velocity[1] < 0)) {
+							&& (particleList.get(i).velocity[1] < 0)) {
 								particleList.get(i).velocity[1] *= -1;
 								particleList.get(i).velocity[1] += (particleList.get(i).appliedForce[1]
 										/ particleList.get(i).mass) * particleList.get(i).time;
 								particleList.get(i).velocity[1] *= energyLoss;
+								particleList.get(i).velocity[0] *= energyLoss;
 								particleList.get(i).location[1] += particleList.get(i).velocity[1];
 								collisionConfirm = true;
-							} else if ((particleList.get(i).location[1]
-									+ particleList.get(i).velocity[1] > (borderCoord[1] + borderHeight) - particleSize)
-									&& (particleList.get(i).velocity[1] > 0)) {
+							} else if ((particleList.get(i).location[1] + particleList.get(i).velocity[1] > (borderCoord[1] + borderHeight) - particleSize)
+							&& (particleList.get(i).velocity[1] > 0)) {
 								particleList.get(i).velocity[1] *= -1;
 								particleList.get(i).velocity[1] += (particleList.get(i).appliedForce[1]	/ particleList.get(i).mass) * particleList.get(i).time;
 								particleList.get(i).velocity[1] *= energyLoss;
+								particleList.get(i).velocity[0] *= energyLoss;
 								particleList.get(i).location[1] += particleList.get(i).velocity[1];
 								collisionConfirm = true;
 							}
@@ -467,10 +484,8 @@ public class GUI extends JPanel implements /*KeyListener, */ActionListener, Mous
 							particleList.get(i).location[0] += particleList.get(i).velocity[0];
 							particleList.get(i).location[1] += particleList.get(i).velocity[1];
 	
-							particleList.get(i).velocity[0] += (particleList.get(i).appliedForce[0]
-									/ particleList.get(i).mass) * particleList.get(i).time;
-							particleList.get(i).velocity[1] += (particleList.get(i).appliedForce[1]
-									/ particleList.get(i).mass) * particleList.get(i).time;
+							particleList.get(i).velocity[0] += (particleList.get(i).appliedForce[0] / particleList.get(i).mass) * particleList.get(i).time;
+							particleList.get(i).velocity[1] += (particleList.get(i).appliedForce[1] / particleList.get(i).mass) * particleList.get(i).time;
 	
 							particleList.get(i).time += 0.001;
 						}
@@ -481,10 +496,8 @@ public class GUI extends JPanel implements /*KeyListener, */ActionListener, Mous
 							particleList.get(i).location[0] += particleList.get(i).velocity[0];
 							particleList.get(i).location[1] += particleList.get(i).velocity[1];
 	
-							particleList.get(i).velocity[0] += (particleList.get(i).appliedForce[0]
-									/ particleList.get(i).mass) * particleList.get(i).time;
-							particleList.get(i).velocity[1] += (particleList.get(i).appliedForce[1]
-									/ particleList.get(i).mass) * particleList.get(i).time;
+							particleList.get(i).velocity[0] += (particleList.get(i).appliedForce[0] / particleList.get(i).mass) * particleList.get(i).time;
+							particleList.get(i).velocity[1] += (particleList.get(i).appliedForce[1] / particleList.get(i).mass) * particleList.get(i).time;
 	
 							particleList.get(i).time += 0.001;
 						}
@@ -494,66 +507,53 @@ public class GUI extends JPanel implements /*KeyListener, */ActionListener, Mous
 			}
 		}
 	}
-	
-	/*@Override
-	public void keyTyped(KeyEvent e) {
-		// TODO Auto-generated method stub
-		
-	}
 
-	@Override
-	public void keyPressed(KeyEvent e) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public void keyReleased(KeyEvent e) {
-		// TODO Auto-generated method stub
-		
-	}*/
-
-	@Override
-	public void mouseDragged(MouseEvent e) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
+	// Relevant auto-generated methods:
 	public void mouseMoved(MouseEvent e) {
 		// TODO Auto-generated method stub
 		cursorLocation[0] = e.getX();
 		cursorLocation[1] = e.getY();
 	}
-
-	@Override
+	
 	public void mouseClicked(MouseEvent e) {
-		// TODO Auto-generated method stub
-		
+		if(cursor) { 
+			// Left Click:
+			if(e.getButton() == MouseEvent.BUTTON1) {
+				cursorParticle tempCursorParticle = new cursorParticle();
+				tempCursorParticle.location[0] = e.getX() - (cursorSize / 2);
+				tempCursorParticle.location[1] = e.getY() - (cursorSize / 2);
+				tempCursorParticle.size = cursorSize;
+				tempCursorParticle.color = cursorColor;
+				cursorParticleList.add(tempCursorParticle);
+			// Right Click:
+			} else if(e.getButton() == MouseEvent.BUTTON3) {
+				for(int i = 0; i <cursorParticleList.size(); i++) {
+					if(((Math.pow((e.getX() - cursorParticleList.get(i).location[0]), 2)) + (Math.pow((e.getY() - cursorParticleList.get(i).location[1]), 2))) < Math.pow((cursorParticleList.get(i).size), 2)) {
+						cursorParticleList.remove(i);
+					}
+				}
+			}
+		}
 	}
-
-	@Override
-	public void mousePressed(MouseEvent e) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public void mouseReleased(MouseEvent e) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
+	
 	public void mouseEntered(MouseEvent e) {
-		// TODO Auto-generated method stub
 		cursorConfirm = true;
 		emptyOldCursor = true;
 	}
 
-	@Override
 	public void mouseExited(MouseEvent e) {
-		// TODO Auto-generated method stub
 		cursorConfirm = false;
+	}
+	
+	// Trivial auto-generated methods:
+	public void mouseDragged(MouseEvent e) {
+	}
+
+
+
+	public void mousePressed(MouseEvent e) {
+	}
+
+	public void mouseReleased(MouseEvent e) {
 	}
 }
