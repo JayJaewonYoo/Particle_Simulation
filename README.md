@@ -6,9 +6,6 @@ Note you must have Java SE Runtime Environment installed which you can find here
 1. Download the ParticlePhysicsSimulator.jar file.
 2. After opening the file, click the "CLICK ME" button for more details. 
 
-If you do not have a Java SE Runtime Environment installed:
-Instructions to be added. 
-
 If you wish to download and open the source code as a Java Project:
 - Using Eclipse IDE:
   1. Download repository as a zip file.
