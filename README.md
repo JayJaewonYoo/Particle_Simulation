@@ -6,6 +6,19 @@ If you have a Java SE Runtime Environment installed:
 1. Download the ParticlePhysicsSimulator.jar file.
 2. After opening the file, click the "CLICK ME" button for more details. 
 
+If you do not have a Java SE Runtime Environment installed:
+Instructions to be added. 
+
+If you wish to download and open the source code as a Java Project:
+- Using Eclipse IDE:
+  1. Download repository as a zip file.
+  2. Export the zip file. 
+  3. Open Eclipse.
+  4. Under "File" select "Open Projects from File System...".
+  5. Beside "Import Source" click the "Directory..." button and select the exported folder.
+- Using Netbeans IDE:
+  Instructions to be added. 
+
 ## Feature List:
 - Particle-boundary collisions.
 - Particle-particle collisions.
