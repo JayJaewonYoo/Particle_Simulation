@@ -2,7 +2,7 @@
 Simulation of particles interacting with each other in real-time created using Java. 
 
 ## How to download:
-Note you must have Java SE Runtime Environment installed:
+Note you must have Java SE Runtime Environment installed which you can find here: https://www.java.com/en/download/
 1. Download the ParticlePhysicsSimulator.jar file.
 2. After opening the file, click the "CLICK ME" button for more details. 
 
