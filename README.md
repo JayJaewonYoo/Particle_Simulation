@@ -17,7 +17,10 @@ If you wish to download and open the source code as a Java Project:
   4. Under "File" select "Open Projects from File System...".
   5. Beside "Import Source" click the "Directory..." button and select the exported folder.
 - Using Netbeans IDE:
-  Instructions to be added. 
+  1. Install Eclipse IDE.
+  2. Follow instructions above to download into an Eclipse Workspace.
+  3. Open Netbeans and under "File" select "Import Project" then "Eclipse Project"
+  4. Select the Eclipse Workspace directory in the "Workspace Location" section of the wizard.
 
 ## Feature List:
 - Particle-boundary collisions.
