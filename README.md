@@ -2,9 +2,14 @@
 Simulation of particles interacting with each other in real-time created using Java. 
 
 ## How to download:
-Note you must have Java SE Runtime Environment installed which you can find here: https://www.java.com/en/download/
+Note you must have Java SE Runtime Environment installed which you can find here: https://www.java.com/en/download/ 
+- You can check if you have it installed by opening Command Prompt and typing "java -version" then pressing ENTER. If the console does not respond with "command not found", then it is installed. 
 1. Download the ParticlePhysicsSimulator.jar file.
-2. After opening the file, click the "CLICK ME" button for more details. 
+2. Run the file using Java(TM) Platform SE binary.
+  - To run the file through Command Prompt:
+    1. Change directories to the file location by typing "cd FILEPATH" and press ENTER where FILEPATH is the file path to the directory where the file is stored. 
+    2. Type "java -jar ParticlePhysicsSimulator.jar" and press ENTER.
+3. After opening the file, click the "CLICK ME" button for more details. 
 
 If you wish to download and open the source code as a Java Project:
 - Using Eclipse IDE:
